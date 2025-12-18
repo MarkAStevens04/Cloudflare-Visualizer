@@ -46,17 +46,30 @@ if (url.pathname === "/api/dashboard") {
   const wantHTML = format === "html" || (!wantCSV && format !== "json" && accept.includes("text/html"));
 
   const windowBind = `-${days} day`;
-  const where = days > 0 ? `WHERE a."date" >= date('now', ?)` : "";
+  const where = days > 0 ? `WHERE p.day >= date('now', ?)` : "";
 
   // First-ever attendance date per token (ALL TIME), then daily split within the window
   const dailySQL = `
-  WITH firsts AS (
-    SELECT token, MIN("date") AS first_date
+  WITH att AS (
+    -- one row per person per day (protects against duplicate scans)
+    SELECT DISTINCT token, "date" AS day
     FROM attendances
+  ),
+  firsts AS (
+    SELECT token, MIN(day) AS first_date
+    FROM att
     GROUP BY token
   ),
+  per_token AS (
+    -- next_day != NULL means: this person attended at least one later event
+    SELECT
+      token,
+      day,
+      LEAD(day) OVER (PARTITION BY token ORDER BY day) AS next_day
+    FROM att
+  ),
   events_by_day AS (
-    -- ensures we only have one row per date (prevents duplicate counts if events has multiple rows per day)
+    -- ensures only one name per day
     SELECT
       "event_date" AS day,
       MAX("event_name") AS event_name
@@ -64,31 +77,42 @@ if (url.pathname === "/api/dashboard") {
     GROUP BY "event_date"
   )
   SELECT
-    a."date" AS day,
+    p.day AS day,
     e.event_name AS event_name,
-    COUNT(DISTINCT a.token) AS total,
-    COUNT(DISTINCT CASE WHEN f.first_date = a."date" THEN a.token END) AS first_time,
-    COUNT(DISTINCT CASE WHEN f.first_date < a."date" THEN a.token END) AS repeat
-  FROM attendances a
-  JOIN firsts f ON f.token = a.token
-  LEFT JOIN events_by_day e ON e.day = a."date"
+    COUNT(DISTINCT p.token) AS total,
+    COUNT(DISTINCT CASE WHEN f.first_date = p.day THEN p.token END) AS first_time,
+    COUNT(DISTINCT CASE WHEN f.first_date < p.day THEN p.token END) AS repeat,
+    COUNT(DISTINCT CASE WHEN p.next_day IS NOT NULL THEN p.token END) AS retained_after
+  FROM per_token p
+  JOIN firsts f ON f.token = p.token
+  LEFT JOIN events_by_day e ON e.day = p.day
   ${where}
-  GROUP BY a."date", e.event_name
+  GROUP BY p.day, e.event_name
   ORDER BY day ASC
 `;
+
 
 
   const dailyRes = days > 0
     ? await DB.prepare(dailySQL).bind(windowBind).run()
     : await DB.prepare(dailySQL).run();
 
-  const rows = (dailyRes.results || []).map(r => ({
+  const rows = (dailyRes.results || []).map(r => {
+  const total = Number(r.total) || 0;
+  const retained_after = Number(r.retained_after) || 0;
+  const retention_pct = total ? Math.round((retained_after / total) * 1000) / 10 : 0; // 1 decimal
+
+  return {
     day: String(r.day),
     event_name: r.event_name == null ? null : String(r.event_name),
-    total: Number(r.total) || 0,
+    total,
     first_time: Number(r.first_time) || 0,
-    repeat: Number(r.repeat) || 0
-  }));
+    repeat: Number(r.repeat) || 0,
+    retained_after,
+    retention_pct
+  };
+});
+
 
 
   // Event days only => days with >=1 attendee
@@ -275,6 +299,9 @@ if (url.pathname === "/api/dashboard") {
 
       const label = d.label || (d.event_name ? `${d.event_name} (${d.day})` : d.day);
 
+      const retainedAfter = d.retained_after || 0;
+      const retentionPct = d.retention_pct ?? 0;
+
 
       bars += `
         <g
@@ -289,6 +316,9 @@ if (url.pathname === "/api/dashboard") {
           data-total="${total}"
           data-repeat="${rep}"
           data-first-time="${fst}"
+          data-retained-after="${retainedAfter}"
+          data-retention-pct="${retentionPct}"
+
         >
           <!-- big invisible click target -->
           <rect x="${x.toFixed(2)}" y="${pad}" width="${w}" height="${plotH}" class="hit"></rect>
@@ -627,6 +657,8 @@ ${svgDistChart}
   const subEl = document.getElementById('dSub');
   const bodyEl = document.getElementById('dBody');
 
+  const LAST_DAY = ${JSON.stringify(payload.summary.to || "")};
+
   let selected = null;
 
   function openDrawer() {
@@ -684,6 +716,26 @@ ${svgDistChart}
     const row = makeEl('div', 'kvRow', null);
     row.appendChild(kvCard('Repeat', String(ds.repeat || 0), 'small'));
     row.appendChild(kvCard('First-time', String(ds.firstTime || 0), 'small'));
+    const total = Number(ds.total || 0);
+    const retainedAfter = Number(ds.retainedAfter || 0);
+    const retentionPct = ds.retentionPct != null && ds.retentionPct !== ""
+      ? Number(ds.retentionPct)
+      : (total ? Math.round((retainedAfter / total) * 1000) / 10 : 0);
+
+    const retentionLabel = (LAST_DAY && start === LAST_DAY)
+      ? "—"
+      : (Number.isFinite(retentionPct) ? retentionPct.toFixed(1) + "%" : "—");
+
+    const row2 = makeEl('div', 'kvRow', null);
+    row2.appendChild(kvCard('Returned later', String(retainedAfter), 'small'));
+    row2.appendChild(kvCard('Retention', retentionLabel, 'small'));
+    bodyEl.appendChild(row2);
+
+    if (LAST_DAY && start === LAST_DAY) {
+      bodyEl.appendChild(makeEl('div', 'hint2', 'Latest event day — retention will increase as future events happen.'));
+    }
+
+
     bodyEl.appendChild(row);
 
     if (!eventName) {
