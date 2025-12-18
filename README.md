@@ -1,4 +1,5 @@
 # Worker + D1 Database
+FINALLY WORKING!!!! SUPER SLAY!
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/d1-template)
 
