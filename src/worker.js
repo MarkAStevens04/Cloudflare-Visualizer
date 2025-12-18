@@ -346,7 +346,7 @@ if (url.pathname === "/api/dashboard") {
     return `
     <svg id="attChart" viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Attendance over time (repeat vs first-time)">
         <rect x="0" y="0" width="${W}" height="${H}" rx="16" class="chartBg"></rect>
-        <text x="${pad}" y="24" class="chartTitle">Attendance over time • best: ${fmt(max)}</text>
+        <text x="${pad}" y="24" class="chartTitle">Attendance over time</text>
         ${bars}
         ${axisLabels}
       </svg>`;
@@ -389,7 +389,7 @@ if (url.pathname === "/api/dashboard") {
     return `
       <svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Number of events students attend">
         <rect x="0" y="0" width="${W}" height="${H}" rx="16" class="chartBg"></rect>
-        <text x="${pad}" y="24" class="chartTitle">How many events our students attend</text>
+        <text x="${pad}" y="24" class="chartTitle">How many events our students attended</text>
         ${bars}
         ${axisLabels}
       </svg>`;
@@ -716,6 +716,8 @@ ${svgDistChart}
     const row = makeEl('div', 'kvRow', null);
     row.appendChild(kvCard('Repeat', String(ds.repeat || 0), 'small'));
     row.appendChild(kvCard('First-time', String(ds.firstTime || 0), 'small'));
+    bodyEl.appendChild(row);
+
     const total = Number(ds.total || 0);
     const retainedAfter = Number(ds.retainedAfter || 0);
     const retentionPct = ds.retentionPct != null && ds.retentionPct !== ""
@@ -735,8 +737,6 @@ ${svgDistChart}
       bodyEl.appendChild(makeEl('div', 'hint2', 'Latest event day — retention will increase as future events happen.'));
     }
 
-
-    bodyEl.appendChild(row);
 
     if (!eventName) {
       bodyEl.appendChild(makeEl('div', 'hint2', 'No event name stored for this day yet.'));
