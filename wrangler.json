@@ -5,7 +5,7 @@
 	"upload_source_maps": true,
 	"d1_databases": [
 		{
-			"binding": "TEST_BINDING",
+			"binding": "DB",
 			"database_id": "f12b7717-db2d-47c9-be29-7a00e713d944",
 			"database_name": "d1-template-database"
 		}
