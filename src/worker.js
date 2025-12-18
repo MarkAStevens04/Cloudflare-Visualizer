@@ -17,7 +17,7 @@ export default {
 
 
 
-    
+
 
 
 
@@ -89,7 +89,7 @@ if (url.pathname === "/api/dashboard") {
     first_time: Number(r.first_time) || 0,
     repeat: Number(r.repeat) || 0
   }));
-    
+
 
   // Event days only => days with >=1 attendee
   const eventDays = rows.filter(r => r.total > 0);
@@ -172,7 +172,7 @@ if (url.pathname === "/api/dashboard") {
     if (overflow > 0) dist.push({ events: CAP, people: overflow, label: `${CAP}+` });
     dist = dist.map(d => ({ ...d, label: d.label ?? String(d.events) }));
   }
-  
+
 
   const payload = {
     window_days: days || null,
@@ -206,14 +206,14 @@ if (url.pathname === "/api/dashboard") {
       const s = v == null ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
     };
-    
+
     const lines = [
       "date,event_name,repeat,first_time,total,avg7_event_days,cumulative",
       ...rows.map(r =>
         `${r.day},${csvEsc(r.event_name)},${r.repeat},${r.first_time},${r.total},${r.avg7 ?? ""},${r.cumulative}`
       )
     ];
-    
+
     return new Response(lines.join("\n"), {
       headers: {
         "content-type": "text/csv; charset=utf-8",
@@ -300,7 +300,7 @@ if (url.pathname === "/api/dashboard") {
         </g>`;
     }
 
-    
+
 
     // Labels (start / middle / end)
     const mid = Math.floor(chartSeries.length / 2);
@@ -810,7 +810,7 @@ if (url.pathname === "/leaderboard" || url.pathname === "/api/leaderboard") {
     const coverage = r.population ? (100 * r.attendees / r.population) : 0;
 
     return `
-      <div class="card"> 
+      <div class="card">
         ${r.emoji_1 ? `<div class="emojiCorner" aria-hidden="true">${escapeHtml(r.emoji_1)}</div>` : ""}
         <div class="cardTop">
           <div class="rank">${medal(i)}</div>
@@ -909,7 +909,7 @@ if (url.pathname === "/leaderboard" || url.pathname === "/api/leaderboard") {
       height:42px;
       display:grid;
       place-items:center;
-    
+
       font-size:28px;     /* bigger emoji */
       line-height:1;
 

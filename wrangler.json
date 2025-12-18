@@ -1,11 +1,11 @@
 {
 	"compatibility_date": "2025-10-08",
-	"main": "src/index.ts",
+	"main": "src/worker.js",
 	"name": "visualizer",
 	"upload_source_maps": true,
 	"d1_databases": [
 		{
-			"binding": "DB",
+			"binding": "TEST_BINDING",
 			"database_id": "f12b7717-db2d-47c9-be29-7a00e713d944",
 			"database_name": "d1-template-database"
 		}
